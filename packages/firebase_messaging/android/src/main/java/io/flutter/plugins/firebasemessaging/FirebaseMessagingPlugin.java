@@ -54,8 +54,8 @@ public class FirebaseMessagingPlugin extends BroadcastReceiver
   private void onAttachedToEngine(Context context, BinaryMessenger binaryMessenger) {
     this.applicationContext = context;
     channel = new MethodChannel(binaryMessenger, "plugins.flutter.io/firebase_messaging");
-    final MethodChannel backgroundCallbackChannel =
-        new MethodChannel(binaryMessenger, "plugins.flutter.io/firebase_messaging_background");
+    final MethodChannel backgroundCallbackChannel = new MethodChannel(binaryMessenger,
+        "plugins.flutter.io/firebase_messaging_background");
 
     channel.setMethodCallHandler(this);
     backgroundCallbackChannel.setMethodCallHandler(this);
@@ -118,8 +118,7 @@ public class FirebaseMessagingPlugin extends BroadcastReceiver
       String token = intent.getStringExtra(FlutterFirebaseMessagingService.EXTRA_TOKEN);
       channel.invokeMethod("onToken", token);
     } else if (action.equals(FlutterFirebaseMessagingService.ACTION_REMOTE_MESSAGE)) {
-      RemoteMessage message =
-          intent.getParcelableExtra(FlutterFirebaseMessagingService.EXTRA_REMOTE_MESSAGE);
+      RemoteMessage message = intent.getParcelableExtra(FlutterFirebaseMessagingService.EXTRA_REMOTE_MESSAGE);
       Map<String, Object> content = parseRemoteMessage(message);
       channel.invokeMethod("onMessage", content);
     }
@@ -146,17 +145,20 @@ public class FirebaseMessagingPlugin extends BroadcastReceiver
 
   @Override
   public void onMethodCall(final MethodCall call, final Result result) {
-    /*  Even when the app is not active the `FirebaseMessagingService` extended by
-     *  `FlutterFirebaseMessagingService` allows incoming FCM messages to be handled.
+    /*
+     * Even when the app is not active the `FirebaseMessagingService` extended by
+     * `FlutterFirebaseMessagingService` allows incoming FCM messages to be handled.
      *
-     *  `FcmDartService#start` and `FcmDartService#initialized` are the two methods used
-     *  to optionally setup handling messages received while the app is not active.
+     * `FcmDartService#start` and `FcmDartService#initialized` are the two methods
+     * used
+     * to optionally setup handling messages received while the app is not active.
      *
-     *  `FcmDartService#start` sets up the plumbing that allows messages received while
-     *  the app is not active to be handled by a background isolate.
+     * `FcmDartService#start` sets up the plumbing that allows messages received
+     * while
+     * the app is not active to be handled by a background isolate.
      *
-     *  `FcmDartService#initialized` is called by the Dart side when the plumbing for
-     *  background message handling is complete.
+     * `FcmDartService#initialized` is called by the Dart side when the plumbing for
+     * background message handling is complete.
      */
     if ("FcmDartService#start".equals(call.method)) {
       long setupCallbackHandle = 0;
@@ -248,34 +250,34 @@ public class FirebaseMessagingPlugin extends BroadcastReceiver
               });
     } else if ("deleteInstanceID".equals(call.method)) {
       new Thread(
-              new Runnable() {
-                @Override
-                public void run() {
-                  try {
-                    FirebaseInstanceId.getInstance().deleteInstanceId();
-                    if (mainActivity != null) {
-                      mainActivity.runOnUiThread(
-                          new Runnable() {
-                            @Override
-                            public void run() {
-                              result.success(true);
-                            }
-                          });
-                    }
-                  } catch (IOException ex) {
-                    Log.e(TAG, "deleteInstanceID, error:", ex);
-                    if (mainActivity != null) {
-                      mainActivity.runOnUiThread(
-                          new Runnable() {
-                            @Override
-                            public void run() {
-                              result.success(false);
-                            }
-                          });
-                    }
-                  }
+          new Runnable() {
+            @Override
+            public void run() {
+              try {
+                FirebaseInstanceId.getInstance().deleteInstanceId();
+                if (mainActivity != null) {
+                  mainActivity.runOnUiThread(
+                      new Runnable() {
+                        @Override
+                        public void run() {
+                          result.success(true);
+                        }
+                      });
                 }
-              })
+              } catch (IOException ex) {
+                Log.e(TAG, "deleteInstanceID, error:", ex);
+                if (mainActivity != null) {
+                  mainActivity.runOnUiThread(
+                      new Runnable() {
+                        @Override
+                        public void run() {
+                          result.success(false);
+                        }
+                      });
+                }
+              }
+            }
+          })
           .start();
     } else if ("autoInitEnabled".equals(call.method)) {
       result.success(FirebaseMessaging.getInstance().isAutoInitEnabled());
@@ -312,9 +314,15 @@ public class FirebaseMessagingPlugin extends BroadcastReceiver
       Map<String, Object> dataMap = new HashMap<>();
 
       for (String key : extras.keySet()) {
+        Log.i(TAG, "debug value: " + key);
         Object extra = extras.get(key);
         if (extra != null) {
-          dataMap.put(key, extra);
+          // from: flutter-fcm
+          // edited by: elfaaels
+          if (!key.equals("gcm.n.analytics_data")) {
+            Log.i(TAG, "Extra Key: " + extra);
+            dataMap.put(key, extra);
+          }
         }
       }
 
@@ -322,6 +330,7 @@ public class FirebaseMessagingPlugin extends BroadcastReceiver
       message.put("data", dataMap);
 
       channel.invokeMethod(method, message);
+      Log.i(TAG, "Debug Message value: " + message.toString() + method);
       return true;
     }
     return false;
